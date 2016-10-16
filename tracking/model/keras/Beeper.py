@@ -48,16 +48,14 @@ class Beeper(Module):
         dy = -self.distortion + 2.0 * self.distortion * self.srng.uniform((samples,))
         cX = chw[:, 0] + dx
         cY = chw[:, 1] + dy
-        h = K.maximum(chw[:, 2] * self.context, self.minSide)
-        w = K.maximum(chw[:, 3] * self.context, self.minSide)
-        maxW = 1.0 - K.abs(cX)
-        maxH = 1.0 - K.abs(cY)
+        h = K.maximum(chw[:, 2] * (1.0 + self.context), self.minSide)
+        w = K.maximum(chw[:, 3] * (1.0 + self.context), self.minSide)
         
         # Calculating the parameters of the transformation
         tx = cX
         ty = cY
-        sx = K.minimum(w / 2.0, maxW) # Scale x
-        sy = K.minimum(h / 2.0, maxH) # Scale y
+        sx = w / 2.0 # Scale x
+        sy = h / 2.0 # Scale y
         
         # Setting transformation
         theta = THT.set_subtensor(theta[:, 0, 0], sx)

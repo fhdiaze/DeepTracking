@@ -23,33 +23,36 @@ class Tracker(Tracker):
         self.timeSize = timeSize
     
     
-    def fit(self, input, position, lnr):
-        loss = self.model.train_on_batch(input, position)
+    def fit(self, frame, position, lnr):
+        frame, position = self.processor.preprocess(frame, position)
+        loss = self.model.train_on_batch(frame, position)
         
         return loss
         
     
-    def predict(self, input):
-        position = self.model.predict_on_batch(input)
-    
+    def forward(self, frame, position):
+        frame, position = self.processor.preprocess(frame, position)
+        position = self.model.predict_on_batch(frame)
+        frame, position = self.processor.postprocess(frame, position)
+        
         return position
     
     
-    def forward(self, input, initPosition):
-        batchSize = input[0].shape[0]
-        seqLength = input[0].shape[1]
-        targetDim = initPosition.shape[1]
-        iters = seqLength / self.timeSize + (seqLength % self.timeSize > 0)
+    def track(self, frame, initPosition):
+        batchSize = frame.shape[0]
+        seqLength = frame.shape[1]
+        targetDim = initPosition.shape[-1]
+        #iters = seqLength / self.timeSize + (seqLength % self.timeSize > 0)
         position = NP.empty((batchSize, 0, targetDim))
         predPosition = initPosition
         
-        for i in range(iters):
-            start = self.timeSize * (i)
-            end = self.timeSize * (i + 1)
-            pInput = [inP[:, start:end, ...] for inP in input]
-            predPosition = self.step(pInput, predPosition)
-            position = NP.append(position, predPosition, axis=1)
-    
+        for i in range(seqLength):
+            start = i
+            end = i + self.timeSize
+            pFrame = frame[:, start:end, ...]
+            predPosition = self.step(pFrame, predPosition)
+            position = NP.concatenate((position, predPosition), axis=1)
+        
         return position
     
     
@@ -95,10 +98,10 @@ class Tracker(Tracker):
         self.model.set_weights(weights)
         
         
-    def step(self, input, position):
-        input = self.processor.before(input, position)
+    def step(self, frame, position):
+        input, position = self.processor.preprocess(frame, position)
         position = self.model.predict_on_batch(input)
-        position = self.processor.after(position)
+        input, position = self.processor.postprocess(input, position)
         
         return position
         

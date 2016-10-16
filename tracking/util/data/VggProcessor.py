@@ -11,28 +11,29 @@ from tracking.model.core.Processor import Processor
 
 class VggProcessor(Processor):
     
-    def __init__(self, frameDims, positionModel):
-        self.frameDims = frameDims
+    def __init__(self, positionModel):
         self.positionModel = positionModel
-        self.mean = NP.array([103.939, 116.779, 123.68])[NP.newaxis, NP.newaxis, :, NP.newaxis, NP.newaxis]
+        self.mean = NP.array([103.939, 116.779, 123.68])[NP.newaxis, NP.newaxis, :, NP.newaxis, NP.newaxis] # Mean in BGR
     
     def preprocess(self, frame, position):
-        frame = frame.astype(float).transpose(0, 1, 4, 2, 3)
+        frame = NP.copy(frame).transpose(0, 1, 4, 2, 3)
         frame = frame[:,:,::-1,:,:] # Make BGR
         frame -= self.mean
+        frameDims = frame.shape[-2:]
         
-        position = Preprocess.scalePosition(position, self.frameDims)
+        position = Preprocess.scalePosition(position, frameDims)
         position = self.positionModel.fromTwoCorners(position)
 
         return frame, position
 
     
     def postprocess(self, frame, position):
-        frame += self.mean
+        frame = NP.copy(frame) + self.mean
         frame = frame[:,:,::-1,:,:] # Make RGB
+        frameDims = frame.shape[-2:]
         frame = frame.transpose(0, 1, 3, 4, 2)
         
         position = self.positionModel.toTwoCorners(position)
-        position = Preprocess.rescalePosition(position, self.frameDims)
-
+        position = Preprocess.rescalePosition(position, frameDims)
+        
         return frame, position
