@@ -8,7 +8,7 @@ Created on Tue Jun 14 12:59:29 2016
 import os
 import random
 import numpy as NP
-import cPickle as pickle
+import dill
 import scipy.misc as SCPM
 import matplotlib.pyplot as PLT
 import tracking.util.data.Preprocess as Preprocess
@@ -74,13 +74,13 @@ def createDataset(path, seqs, extension, boxesFile, size, samples, seqLength, ou
         positions[i, ...] = position[start:start+seqLength, ...]
         
     dataSetFile = open(outPath, "wb")
-    pickle.dump((frames, positions), dataSetFile, protocol=pickle.HIGHEST_PROTOCOL)
+    dill.dump((frames, positions), dataSetFile)
     dataSetFile.close()
     
 
 def loadDataset(path):
     dataSetFile = open(path, "rb")
-    frame, position = pickle.load(dataSetFile)
+    frame, position = dill.load(dataSetFile)
     dataSetFile.close()
     
     return frame, position
@@ -100,5 +100,5 @@ def plotResults(measures, measureName):
         ax.set_title(title)
         ax.set_xlabel("frame")
         ax.set_ylabel(measureName)
-        print title
+        print(title)
         i += 1

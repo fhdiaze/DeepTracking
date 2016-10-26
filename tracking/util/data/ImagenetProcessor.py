@@ -9,7 +9,7 @@ import numpy as NP
 import tracking.util.data.Preprocess as Preprocess
 from tracking.model.core.Processor import Processor
 
-class VggProcessor(Processor):
+class ImagenetProcessor(Processor):
     
     def __init__(self, positionModel):
         self.positionModel = positionModel

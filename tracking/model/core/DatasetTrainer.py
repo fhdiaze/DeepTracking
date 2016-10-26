@@ -6,7 +6,7 @@ Created on Thu Jun 16 22:17:41 2016
 """
 
 import logging
-from Trainer import Trainer
+from tracking.model.core.Trainer import Trainer
 
 class DatasetTrainer(Trainer):
 

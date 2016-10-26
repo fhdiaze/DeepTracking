@@ -5,6 +5,8 @@ Created on Mon May 23 16:18:20 2016
 @author: MindLab
 """
 
+import matplotlib.pyplot as PLT
+
 def getValues(logPath):
     epochMeasures = []
     batchMeasures = []
@@ -26,3 +28,12 @@ def getValues(logPath):
                 batchLosses.append(loss)
                 
     return batchLosses, batchMeasures, epochMeasures
+    
+    
+def plotEpochMeasures(logPath, figPath):
+    batchLosses, batchMeasures, epochMeasures = getValues(logPath)
+    fig = PLT.figure(1, (20., 10.))
+    PLT.plot(epochMeasures, color="g")
+    PLT.title(logPath)
+    fig.savefig(figPath)
+    PLT.close(fig)
