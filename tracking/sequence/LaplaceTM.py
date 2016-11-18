@@ -10,47 +10,30 @@ from tracking.util.model.CentroidHWPM import CentroidHWPM
 
 class LaplaceTM:
     
-    def __init__(self, muX, lambdaX, muS, lambdaS):
-        self.samplerP = lambda size : NP.random.laplace(loc=muX, scale=lambdaX, size=size)
-        self.samplerS = lambda size : NP.random.laplace(loc=muS, scale=lambdaS, size=size)
+    def __init__(self, muT, lambdaT, muR, lambdaR):
+        self.samplerT = lambda size : NP.random.laplace(loc=muT, scale=lambdaT, size=size)
+        self.samplerR = lambda size : NP.random.laplace(loc=muR, scale=lambdaR, size=size)
         self.centroidHWPM = CentroidHWPM()
        
-       
-    def generateTrajectory(self, initP, length):
-        position = NP.zeros((length, self.centroidHWPM.getTargetDim()))
-        initP = self.centroidHWPM.fromTwoCorners(initP)
+    
+    def generateTrajectory(self, length):
         theta = NP.zeros((length, 3, 3), dtype='float32')
         
         # Initialize the trajectory
-        position[0, ...] = initP
         theta[0, 0, 0] = 1.0
         theta[0, 1, 1] = 1.0
-        theta[:, 2, 2] = 1.0
+        theta[0, 2, 2] = 1.0
         
         for t in range(1, length):
-            deltaP = position[t-1, [2, 3]] * self.samplerP((1, 2))
-            deltaS = NP.clip(self.samplerS((1, 2)), 0.6, 1.4)
-            
-            thetaC = NP.zeros((3, 3))
-            thetaC[[0, 1, 2], [0, 1, 2]] = 1.0
-            thetaC[[0, 1], [2, 2]] = position[t-1, [0, 1]]
-            
-            thetaZ = NP.zeros((3, 3))
-            thetaZ[[0, 1], [0, 1]] = 1.0 / deltaS[:, ::-1]
-            thetaZ[2, 2] = 1.0
-            
-            thetaU = NP.zeros((3, 3))
-            thetaU[[0, 1, 2], [0, 1, 2]] = 1.0
-            thetaU[[0, 1], [2, 2]] = -position[t-1, [0, 1]]
+            deltaT = self.samplerT((1, 2))
+            deltaR = self.samplerR((1, 2))
             
             thetaT = NP.zeros((3, 3))
-            thetaT[[0, 1, 2], [0, 1, 2]] = 1.0
-            thetaT[[0, 1], [2, 2]] = -deltaP
+            thetaT[[0, 1], [2, 2]] = deltaT
+            thetaT[[0, 1], [0, 1]] = 1.0 - abs(deltaT)
+            thetaT[[0, 1], [1, 0]] = deltaR
+            thetaT[2, 2] = 1.0
             
-            # Setting transformation
-            theta[t, ...] = NP.dot(NP.dot(NP.dot(thetaC, thetaZ), thetaU), thetaT)
-            position[t, [0, 1]] = position[t-1, [0, 1]] + deltaP
-            position[t, [2, 3]] = position[t-1, [2, 3]] * deltaS
- 
-        position = self.centroidHWPM.toTwoCorners(position)
-        return theta, position
+            theta[t, ...] = NP.dot(theta[t-1, ...], thetaT)
+            
+        return theta

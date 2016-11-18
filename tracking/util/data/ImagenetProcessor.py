@@ -18,7 +18,7 @@ class ImagenetProcessor(Processor):
     def preprocess(self, frame, position):
         frame = NP.copy(frame).transpose(0, 1, 4, 2, 3)
         frame = frame[:,:,::-1,:,:] # Make BGR
-        frame -= self.mean
+        frame = frame - self.mean
         frameDims = frame.shape[-2:]
         
         position = Preprocess.scalePosition(position, frameDims)

@@ -7,6 +7,7 @@ Created on Fri Jul  8 18:54:48 2016
 
 import cPickle as Pickle
 import numpy as NP
+import numpy.linalg as NLA
 import os as OS
 import tracking.util.data.Preprocess as Preprocess
 import random as RND
@@ -15,6 +16,7 @@ import time as TM
 from keras.layers import Input
 from PIL import Image
 from tracking.model.keras.SpatialTransformer import SpatialTransformer
+from tracking.util.model.TwoCornersPM import TwoCornersPM
 
 class TransformerGenerator(object):
     
@@ -27,6 +29,7 @@ class TransformerGenerator(object):
         self.summary = self.loadSummary(summaryPath)
         self.randGen = self.initRandomGenerator()
         self.summaryKey = "summary"
+        self.pm = TwoCornersPM()
         
         
     def initRandomGenerator(self):
@@ -47,12 +50,12 @@ class TransformerGenerator(object):
             position = Preprocess.scalePosition(position, self.frameShape[1:])
             
             # Executing the sequence generation
-            theta, position = self.trajectoryModel.generateTrajectory(position, self.seqLength)
+            theta = self.trajectoryModel.generateTrajectory(self.seqLength)
             frame = NP.tile(frame, (self.seqLength, 1, 1, 1))
             frame = self.transformer.predict_on_batch([frame, theta])
     
             batchF[i, ...] = frame
-            batchP[i, ...] = position
+            batchP[i, ...] = self.pm.transform(NLA.inv(theta), NP.tile(position, (self.seqLength, 1)))
             
         batchF = batchF.transpose(0, 1, 3, 4, 2)
         batchP = Preprocess.rescalePosition(batchP, self.frameShape[1:])
@@ -76,7 +79,6 @@ class TransformerGenerator(object):
         if frame.mode != "RGB":
             frame = frame.convert("RGB")
         frame = NP.array(frame)
-        frame.shape
         originalSize = frame.shape[:2][::-1] # imageSize must be (width, height)
         position = Preprocess.scalePosition(NP.array(objData["bbox"]), originalSize)
         position = Preprocess.rescalePosition(position, self.frameShape[1:])

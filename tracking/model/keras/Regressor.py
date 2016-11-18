@@ -27,3 +27,9 @@ class Regressor(Module):
     def setTrainable(self, trainable):
         for layer in self.model.layers:
             layer.trainable = trainable
+            
+    
+    def getOutputShape(self):
+        outputShape = self.model.layer.output_shape
+        
+        return outputShape

@@ -13,14 +13,35 @@ import scipy.misc as SCPM
 import matplotlib.pyplot as PLT
 import tracking.util.data.Preprocess as Preprocess
 from PIL import Image
+from tracking.sequence.Sequence import Sequence
 
 
 def loadFrame(path):
     frame = NP.array(Image.open(path))
     
     return frame
+    
+    
+def loadFrames(framePaths, size):
+    frame = []
+    
+    for i, framePath in enumerate(framePaths):
+        tmpFrame = loadFrame(framePath)
+        originalSize = tmpFrame.shape[:2][::-1] # imageSize must be (width, height)
+        frame.append(SCPM.imresize(tmpFrame, size))
+    
+    frame = NP.array(frame, dtype=NP.float)
+    
+    return frame, originalSize
+    
 
-
+def getFramePaths(path, extension):
+    framePaths = [os.path.join(path, fn) for fn in os.listdir(path) if fn.endswith(extension)]
+    framePaths = sorted(framePaths)
+    
+    return framePaths
+        
+        
 def loadPosition(path):
     # Load bounding boxes information
     position = []
@@ -28,24 +49,17 @@ def loadPosition(path):
     with open(path) as f:
         [position.append(list(map(float, line.split(",")))) for line in f]
     
-    position = NP.array(position)[:, [2, 3, 6, 7]]
+    position = NP.array(position)
+    position = position.reshape(-1, 4, 2)
+    position = NP.concatenate((NP.min(position, axis=1), NP.max(position, axis=1)), axis=1)
     
     return position
     
 
 def loadSequence(path, extension, boxesFile, size):
     # Load frames
-    framesPath = [os.path.join(path, fn) for fn in os.listdir(path) if fn.endswith(extension)]
-    framesPath = sorted(framesPath)
-    frame = []
-    
-    
-    for i, framePath in enumerate(framesPath):
-        tmpFrame = loadFrame(framePath)
-        originalSize = tmpFrame.shape[:2][::-1] # imageSize must be (width, height)
-        frame.append(SCPM.imresize(tmpFrame, size))
-    
-    frame = NP.array(frame, dtype=NP.float)
+    framePaths = getFramePaths(path, extension)
+    frame, originalSize = loadFrames(framePaths, size)
     
     # Load bounding boxes information
     boxesPath = os.path.join(path, boxesFile)
@@ -84,6 +98,16 @@ def loadDataset(path):
     dataSetFile.close()
     
     return frame, position
+    
+    
+def generateVideo(pm, frames, gtP, predP, output, fps):
+    gtPos = pm.fromTwoCorners(gtP).tolist()
+    predPos = pm.fromTwoCorners(predP).tolist()
+    images = Preprocess.getFrames(frames)
+    sequence = Sequence(images, pm)
+    sequence.addBoxes(gtPos, "Red")
+    sequence.addBoxes(predPos, "Blue")
+    sequence.exportToVideo(fps, output)
     
 
 def plotResults(measures, measureName):

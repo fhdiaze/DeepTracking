@@ -20,20 +20,21 @@ stderr_ = sys.stderr
 sys.stderr = open(os.devnull, "w")
 
 from tracking.model.keras.Tracker import Tracker
-from tracking.util.data.GeneralProcessor import GeneralProcessor
 from tracking.util.model.TwoCornersPM import TwoCornersPM
 
 sys.stderr.close()
 sys.stderr = stderr_
 
-def loadTracker(path="/home/fhdiaze/Models/Tracker22A.pkl"):
+def loadTracker(path):
     tracker = Tracker()
     tracker.load(path)
+    tracker.setStateful(True, 1)
+    tracker.build()
     
     return tracker
 
 
-def track(tracker, processor, frame, position, size):
+def track(tracker, frame, position, size):
 
     x, y, w, h = position
     x1, y1 = x + w, y + h
@@ -50,19 +51,18 @@ def track(tracker, processor, frame, position, size):
     position = Preprocess.scalePosition(position, originalSize)
     position = Preprocess.rescalePosition(position, size)
 
-    frame, position = processor.preprocess(frame, position)
-    position = tracker.forward([frame], position[:, 0, :])
+    position = tracker.forward(frame, position[:, :1, :])
     
     x, y, x1, y1 = position[0, 0, :]
     
-    #logging.info("Tracker prediction: [%s, %s, %s, %s]", x, y, x1, y1)
-    
     return vot.Rectangle(x, y, x1 - x, y1 - y)
 
+# MODEL VARIABLES
 
+trackerName = "Tracker25"
+trackerModelPath = "/home/fhdiaze/Models/"+ trackerName + ".pkl"
 
 # LOGGING VARIABLES
-trackerName = "Tracker22AVot"
 logFilePath = "/home/fhdiaze/Data/Log/" + trackerName + ".log"
 logFormat = "%(asctime)s:%(levelname)s:%(funcName)s:%(lineno)d:%(message)s"
 logDateFormat = "%H:%M:%S"
@@ -92,10 +92,9 @@ if not framePath:
     
 frameDims = (3, 224, 224) # (channels, width, height)
 positionRepresentation = TwoCornersPM()
-processor = GeneralProcessor(frameDims[1:3], positionRepresentation)
 frame = VotTool.loadFrame(framePath)
-tracker = loadTracker()
-logging.info("Tracker was loaded: %s", tracker.loss)
+tracker = loadTracker(trackerModelPath)
+logging.info("Tracker was loaded: %s", trackerModelPath)
 
 while True:
     # *****************************************
@@ -108,7 +107,7 @@ while True:
         break
     
     frame = VotTool.loadFrame(framePath)
-    position = track(tracker, processor, frame, position, frameDims[1:3])
+    position = track(tracker, frame, position, frameDims[1:3])
     
     # *****************************************
     # VOT: Report the position of the object 

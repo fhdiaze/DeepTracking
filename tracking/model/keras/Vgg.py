@@ -12,7 +12,7 @@ from tracking.model.keras.Cnn import Cnn
 from keras.layers.core import Flatten, Dense, Dropout
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
 
-class VggCnn(Cnn):
+class Vgg(Cnn):
     
     def __init__(self, modelPath, layerKey):
         self.layerKey = layerKey
