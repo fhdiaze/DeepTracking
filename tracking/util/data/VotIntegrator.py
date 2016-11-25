@@ -59,7 +59,7 @@ def track(tracker, frame, position, size):
 
 # MODEL VARIABLES
 
-trackerName = "Tracker25"
+trackerName = "Tracker57"
 trackerModelPath = "/home/fhdiaze/Models/"+ trackerName + ".pkl"
 
 # LOGGING VARIABLES
@@ -75,6 +75,8 @@ fileHandler.setFormatter(formatter)
 logger.handlers = []
 logger.addHandler(fileHandler)
 logger.setLevel(logLevel)
+
+logging.info("Environment variables: %s", os.environ)
 
 # *****************************************
 # VOT: Create VOT handle at the beginning
