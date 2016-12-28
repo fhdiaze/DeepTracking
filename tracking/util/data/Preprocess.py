@@ -17,15 +17,17 @@ def rescaleFrame(frame):
     
     return frame * 127.0 + 127.0
     
-    
+
+# size = (width, height)
 def scalePosition(position, size):
     shape = position.shape
     scaledPosition = NP.ravel(position).reshape((-1, 2)).T / (NP.array([size]).T / 2.0) - 1.0
     scaledPosition = NP.ravel(scaledPosition, order="F").reshape(shape)
     
     return scaledPosition
-    
 
+
+# size = (height, width)
 def rescalePosition(position, size):
     shape = position.shape
     rescaledPosition = (NP.ravel(position).reshape((-1, 2)).T + 1.0) * (NP.array([size]).T / 2.0)

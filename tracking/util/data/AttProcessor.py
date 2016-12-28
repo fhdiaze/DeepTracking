@@ -6,6 +6,7 @@ Created on Thu Oct 20 22:36:32 2016
 """
 
 import numpy as NP
+import tracking.util.data.Preprocess as Preprocess
 from tracking.model.core.Processor import Processor
 
 class AttProcessor(Processor):
@@ -15,15 +16,18 @@ class AttProcessor(Processor):
     
     
     def preprocess(self, frame, position):
+        attPosition = NP.roll(position, 1, axis=1) # Shift the time
         frame, position = self.processor.preprocess(frame, position)
-        cropPosition = NP.roll(position, 1, axis=1) # Shift the time
+        frameDims = frame.shape[-2:]
         
         if position.shape[1] > 1:
-            cropPosition[:, 0, :] = cropPosition[:, 1, :] # First frame is ground truth
+            attPosition[:, 0, :] = attPosition[:, 1, :] # First frame is ground truth
+            
+        attPosition = Preprocess.scalePosition(attPosition, frameDims)
         
-        return [frame, cropPosition], position
-        
-        
+        return [frame, attPosition], position
+
+
     def postprocess(self, frame, position):
         frame, position = self.processor.postprocess(frame[0], position)
         

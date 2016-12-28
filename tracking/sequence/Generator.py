@@ -15,7 +15,7 @@ class Generator(object):
         
         grayscale = False
         parallel = True
-        numProcs = 8
+        numProcs = 2
         flow = False
         self.generator = GaussianGenerator(imageDir, summaryPath, trajectoryModelSpec, 
                             cameraTrajectoryModelSpec, trajectoryModelPath, self.seqLength, imageSize=imgSize[0],

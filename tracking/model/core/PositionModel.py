@@ -28,27 +28,6 @@ class PositionModel(object):
         pass
     
     
-    # theta.shape = (batchSize, 3, 3)
-    def transform(self, theta, position):
-        positionShape = position.shape
-        position = position.reshape((-1, self.getTargetDim()))
-        position = self.toTwoCorners(position)
-        
-        # Reshaping the positions
-        samples, targetDim = position.shape
-        position = NP.ravel(position).reshape((samples, 2, -1)).transpose(0, 2, 1)
-        position = NP.concatenate((position, NP.ones((samples, 1, position.shape[2]))), axis=1)
-        
-        # Applying the transformation
-        position = NP.matmul(theta, position)[:, :2, :]
-        
-        # Reshaping the result
-        position = position.transpose(0, 2, 1).reshape((-1, targetDim))
-        position = self.fromTwoCorners(position)
-        position = position.reshape(positionShape)
-        
-        return position
-    
     """
     Plot (inside) the position in a frame. 
 
@@ -61,3 +40,36 @@ class PositionModel(object):
     """ 
     def plot(self, frame, position, outline):
         pass
+    
+
+    # theta.shape = (batchSize, 3, 3)
+    def transform(self, theta, position):
+        positionShape = position.shape
+        theta = theta.reshape((-1, 3, 3))
+        samples = theta.shape[0]
+        position = position.reshape((samples, -1, 2)).transpose(0, 2, 1)
+    
+        # Reshaping the positions
+        position = NP.concatenate((position, NP.ones((samples, 1, position.shape[2]))), axis=1)
+        
+        # Applying the transformation
+        position = NP.matmul(theta, position)[:, :2, :]
+    
+        # Reshaping the result
+        position = position.transpose(0, 2, 1)
+        position = position.reshape(positionShape)
+    
+        return position
+    
+    
+    # oRange = [[xMin, xMax], [yMin, yMax]]
+    # tRange = [[xMin, xMax], [yMin, yMax]]
+    def scale(self, position, oRange, tRange):
+        shape = position.shape
+        oDiff = NP.abs(oRange[:, :1] - oRange[:, 1:]) # [[xDiff], [yDiff]]
+        tDiff = NP.abs(tRange[:, :1] - tRange[:, 1:]) # [[xDiff], [yDiff]]
+        position = position.reshape((-1, 2)).T
+        position = tDiff * (position - oRange[:, :1]) / oDiff + tRange[:, :1]
+        position = position.T.reshape(shape)
+        
+        return position
