@@ -44,7 +44,7 @@ class GeneratorTrainer(Trainer):
                 loss = self.tracker.fit(frame, position, lnr)
                 self.validator.validateBatch(self.tracker, frame, position)
                 
-                logging.info("Batch Loss: Milestone = %d, batch = %d, loss = %f", epoch, batch, loss)
+                logging.info("Batch Loss: Epoch = %d, batch = %d, loss = %f", epoch, batch, loss)
             
             # Updating the learning rate
             lnr = lnr * (1.0 / (1.0 + (lnrdy * epoch * batches + batch)))
@@ -54,6 +54,6 @@ class GeneratorTrainer(Trainer):
             
     def getBatch(self, batchSize):
         frame, position = self.generator.getBatch(batchSize)
-        frame, position = self.processor.preprocess(frame, position)
+        #frame, position = self.processor.preprocess(frame, position)
         
         return frame, position

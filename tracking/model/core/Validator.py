@@ -10,40 +10,41 @@ import numpy as NP
 
 class Validator(object):
 
-    def __init__(self, frame, position, batchSize, measure):        
-        self.frame = frame
-        self.position = position
+    def __init__(self, batchSize, measure):
         self.batchSize = batchSize
         self.measure = measure
+        self.valSets = {}
         
     
     def validateEpoch(self, tracker):
-        valSetSize, seqLength, targetDim = self.position.shape
-        position = NP.empty((0, seqLength-1, targetDim))
+                
+        for name, data in self.valSets.iteritems():
+            valF, valP = data
+            valSetSize, seqLength, targetDim = valP.shape
+            position = NP.empty((0, seqLength-1, targetDim))
         
-        for i in xrange(0, valSetSize, self.batchSize):
-            start = i
-            end = i + self.batchSize
-            batchF = self.frame[start:end, ...]
-            batchP = self.position[start:end, :1, :]
-            tracker.reset()
-            batchPredPosition = tracker.track(batchF, batchP)
-            position = NP.append(position, batchPredPosition, axis=0)
-        
-        measureValue = self.measure.calculate(self.position[:, 1:, :], position).mean()
-        logging.info("Validation Epoch: %s = %f", self.measure.name, measureValue)
+            for i in xrange(0, valSetSize, self.batchSize):
+                start = i
+                end = i + self.batchSize
+                batchF = valF[start:end, ...]
+                batchP = valP[start:end, :1, :]
+                tracker.reset()
+                batchPredPosition = tracker.track(batchF, batchP)
+                position = NP.append(position, batchPredPosition, axis=0)
+            
+            measureValue = self.measure.calculate(valP[:, 1:, :], position).mean()
+            logging.info("Validation Epoch - %s: %s = %f", name, self.measure.name, measureValue)
         
     
     def validateBatch(self, tracker, frame, position):
         tracker.reset()
-        predPosition = tracker.forward(frame, position[:, :1, :])
+        predPosition = tracker.forward(frame, position)
         measureValue = self.measure.calculate(position, predPosition).mean()
         logging.info("Validation Batch: %s = %f", self.measure.name, measureValue)
         
 
-    def setValidationSet(self, frame, position):
-        self.frame = frame
-        self.position = position
+    def setValidationSet(self, name, frame, position):
+        self.valSets[name] = (frame, position)
         
         
     def test(self, tracker, seqs):

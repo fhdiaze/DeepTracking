@@ -13,7 +13,7 @@ from tracking.model.core.Tracker import Tracker
 
 class Tracker(Tracker):
     
-    def __init__(self, input=None, modules=None, builder=None, optimizer=None, loss=None, processor=None, timeSize=None):
+    def __init__(self, input=None, modules=None, builder=None, optimizer=None, loss=None, processor=None, timeSize=None, metrics=None):
         self.input = input
         self.modules = modules
         self.builder = builder
@@ -21,6 +21,7 @@ class Tracker(Tracker):
         self.loss = loss
         self.processor = processor
         self.timeSize = timeSize
+        self.metrics = metrics
     
     
     def fit(self, frame, position, lnr):
@@ -59,7 +60,7 @@ class Tracker(Tracker):
     def build(self):
         output = self.builder.build(self.input, self.modules)
         model = Model(input=self.input, output=output)
-        model.compile(optimizer=self.optimizer, loss=self.loss)
+        model.compile(optimizer=self.optimizer, loss=self.loss, metrics=self.metrics)
         self.model = model
         
         
@@ -114,8 +115,10 @@ class LossHistory(Callback):
 
 
     def on_batch_end(self, batch, logs={}):
-        loss = logs.get('loss')
+        loss = logs.get("loss")
+        measure = logs.get("calculateGpu").mean()
         logging.info("Batch Loss: Epoch = %d, batch = %d, loss = %f", 0, batch, loss)
+        logging.info("Validation Batch: %s = %f", "Overlap", measure)
         
         
     def on_epoch_end(self, epoch, logs={}):

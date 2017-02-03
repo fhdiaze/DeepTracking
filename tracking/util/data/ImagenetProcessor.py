@@ -10,9 +10,10 @@ from tracking.model.core.Processor import Processor
 
 class ImagenetProcessor(Processor):
     
-    def __init__(self, positionModel, tRange):
+    def __init__(self, positionModel, tRange, frameDims):
         self.positionModel = positionModel        
         self.tRange = tRange
+        self.frameDims = frameDims
         self.mean = NP.array([103.939, 116.779, 123.68])[NP.newaxis, NP.newaxis, :, NP.newaxis, NP.newaxis] # Mean in BGR
     
     def preprocess(self, frame, position):
@@ -31,7 +32,7 @@ class ImagenetProcessor(Processor):
     def postprocess(self, frame, position):
         frame = NP.copy(frame) + self.mean
         frame = frame[:,:,::-1,:,:] # Make RGB
-        frameDims = frame.shape[-2:][::-1]
+        frameDims = self.frameDims[-2:][::-1]
         frame = frame.transpose(0, 1, 3, 4, 2)
         
         oRange = NP.array([[0.0, 0.0], frameDims]).T

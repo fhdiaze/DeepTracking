@@ -8,15 +8,20 @@ Created on Mon May 23 16:18:20 2016
 import matplotlib.pyplot as PLT
 
 def getValues(logPath):
-    epochMeasures = []
+    epochMeasures = {}
     batchMeasures = []
     batchLosses = []
     
     with open(logPath, mode="r") as log:
         for line in log:
-            if "Validation Epoch:" in line:
+            if "Validation Epoch -" in line:
+                name = line.split("-")[-1].split(":")[0].strip()
                 value = float(line.split("=")[-1])
-                epochMeasures.append(value)
+                
+                if epochMeasures.get(name, None) is None:
+                    epochMeasures[name] = []
+
+                epochMeasures[name].append(value) 
                 
             if "Validation Batch:" in line:
                 value = float(line.split("=")[-1])

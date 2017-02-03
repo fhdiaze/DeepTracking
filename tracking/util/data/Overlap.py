@@ -6,6 +6,8 @@ Created on Thu Apr 21 18:46:25 2016
 """
 
 import numpy as NP
+import theano.tensor as THT
+from keras import backend as K
 from tracking.model.core.Measure import Measure
 
 class Overlap(Measure):
@@ -24,5 +26,26 @@ class Overlap(Measure):
         predict_area = NP.abs(predPosition[..., 2] - predPosition[..., 0]) * NP.abs(predPosition[..., 3] - predPosition[..., 1])
         union = label_area + predict_area - intersect
         iou = intersect / union
+                
+        return iou
+        
+        
+    # gtPosition.shape = (batchSize, seqLength, targetDim(x1, y1, x2, y2))
+    def calculateGpu(self, gtPosition, predPosition):
+        pShape = K.shape(gtPosition)
+        inputDim = K.ndim(gtPosition)
+        gtPosition = K.reshape(gtPosition, (-1, pShape[-1]))
+        predPosition = K.reshape(predPosition, (-1, pShape[-1]))
+        left = K.maximum(predPosition[:, 0], gtPosition[:, 0])
+        top = K.maximum(predPosition[:, 1], gtPosition[:, 1])
+        right = K.minimum(predPosition[:, 2], gtPosition[:, 2])
+        bottom = K.minimum(predPosition[:, 3], gtPosition[:, 3])
+        intersect = (right - left) * ((right - left) > 0) * (bottom - top) * ((bottom - top) > 0)
+        label_area = K.abs(gtPosition[:, 2] - gtPosition[:, 0]) * K.abs(gtPosition[:, 3] - gtPosition[:, 1])
+        predict_area = K.abs(predPosition[:, 2] - predPosition[:, 0]) * K.abs(predPosition[:, 3] - predPosition[:, 1])
+        union = label_area + predict_area - intersect
+        iou = intersect / union
+        #iouShape = K.concatenate([pShape[:-1], (1, )])
+        iou = THT.reshape(iou, (pShape[0], pShape[1], 1), ndim=inputDim)
                 
         return iou
