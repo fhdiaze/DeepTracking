@@ -14,13 +14,14 @@ import tracking.util.data.VotTool as VotTool
 class VotGenerator(object):
 
     # frameShape = (channels, height, width)
-    def __init__(self, frameShape, seqLength, seqsPath, seqs, extension, boxesFile):
+    def __init__(self, frameShape, seqLength, seqsPath, seqs, extension, boxesFile, annsFile):
         self.frameShape = frameShape[-2:] + frameShape[:1]
         self.seqLength = seqLength
         self.seqsPath = seqsPath
         self.seqs = seqs
         self.extension = extension
         self.boxesFile = boxesFile
+        self.annsFile = annsFile
 
 	
     def getBatch(self, batchSize):
@@ -41,7 +42,17 @@ class VotGenerator(object):
     def loadSequence(self, path, extension, boxesFile, size):
         # Load frames
         framePaths = VotTool.getFramePaths(path, extension)
-        start = NP.random.randint(0, len(framePaths) - self.seqLength)
+        
+        if self.annsFile:
+            annsPath = os.path.join(path, self.annsFile)
+            anns = NP.loadtxt(annsPath, dtype=int)
+            minF = NP.min(anns)
+            maxF = NP.max(anns)
+        else:
+            minF = 0
+            maxF = len(framePaths)
+        
+        start = NP.random.randint(minF, maxF - self.seqLength)
         framePaths = framePaths[start:start+self.seqLength]
         frame, originalSize = VotTool.loadFrames(framePaths, size)
         

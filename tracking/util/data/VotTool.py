@@ -17,7 +17,12 @@ from tracking.sequence.Sequence import Sequence
 
 
 def loadFrame(path):
-    frame = NP.array(Image.open(path))
+    frame = Image.open(path)
+    
+    if frame.mode != "RGB":
+            frame = frame.convert("RGB")
+            
+    frame = NP.array(frame)
     
     return frame
     

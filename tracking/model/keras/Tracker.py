@@ -59,15 +59,14 @@ class Tracker(Tracker):
     
     def build(self):
         output = self.builder.build(self.input, self.modules)
-        model = Model(input=self.input, output=output)
+        model = Model(inputs=self.input, outputs=output)
         model.compile(optimizer=self.optimizer, loss=self.loss, metrics=self.metrics)
         self.model = model
         
         
-    def train(self, generator, epochs, batches, batchSize, validator):
+    def train(self, generator, epochs, batches, validator):
         history = LossHistory(validator, self)
-        spe = batches * batchSize
-        self.model.fit_generator(generator, nb_epoch=epochs, samples_per_epoch=spe, verbose=0, callbacks=[history])
+        self.model.fit_generator(generator, epochs=epochs, steps_per_epoch=batches, verbose=0, callbacks=[history])
         
     
     """

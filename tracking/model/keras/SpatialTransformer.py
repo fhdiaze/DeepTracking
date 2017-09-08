@@ -7,7 +7,7 @@ Created on Wed Aug 17 21:24:21 2016
 
 import theano.tensor as THT
 from keras import backend as K
-from keras.layers import merge
+from keras.engine.topology import Layer
 from keras.models import Model
 from tracking.model.keras.Module import Module
 from tracking.util.theano.Data import Data
@@ -19,19 +19,29 @@ class SpatialTransformer(Module):
         if type(input) is not list or len(input) != 2:
             raise Exception("SpatialTransformer must be called on a list of two tensors. Got: " + str(input))
         
-        self.downsampleFactor = downsampleFactor
-        output = merge(input, mode=self.call, output_shape=self.outputShape)
-        self.model = Model(input=input, output=output)
+        output = TranformerLayer(downsampleFactor)(input)
+        self.model = Model(inputs=input, outputs=output)
     
     
     def getModel(self):
         
         return self.model
         
+        
+class TranformerLayer(Layer):
+    
+    def __init__(self, downsampleFactor, **kwargs):
+        self.downsampleFactor = downsampleFactor
+        super(TranformerLayer, self).__init__(**kwargs)
+    
+    
+    def build(self, input_shape):
+        super(TranformerLayer, self).build(input_shape)
 
+    
     def call(self, X):
         if type(X) is not list or len(X) != 2:
-            raise Exception("SpatialTransformer must be called on a list of two tensors. Got: " + str(X))
+            raise Exception("TranformerLayer must be called on a list of two tensors. Got: " + str(X))
         
         frame, theta = X[0], X[1]
         
@@ -43,7 +53,7 @@ class SpatialTransformer(Module):
         theta = K.reshape(theta, (-1, 3, 3))[:, :2, :]
         
         # Applying the spatial transformation
-        output = SpatialTransformer.transform(theta, frame, self.downsampleFactor)
+        output = TranformerLayer.transform(theta, frame, self.downsampleFactor)
 
         # Reshaping the frame to include time dimension
         outputShape = K.shape(output)
@@ -53,7 +63,7 @@ class SpatialTransformer(Module):
         return output
 
     
-    def outputShape(self, inputShapes):
+    def compute_output_shape(self, inputShapes):
         frameShape = inputShapes[0]
         height = int(frameShape[-2] / self.downsampleFactor)
         width = int(frameShape[-1] / self.downsampleFactor)
@@ -70,7 +80,7 @@ class SpatialTransformer(Module):
         # grid of (x_t, y_t, 1), eq (1) in ref [1]
         out_height = THT.cast(height / downsample_factor, 'int64')
         out_width = THT.cast(width / downsample_factor, 'int64')
-        grid = SpatialTransformer.meshgrid(out_height, out_width)
+        grid = TranformerLayer.meshgrid(out_height, out_width)
     
         # Transform A x (x_t, y_t, 1)^T -> (x_s, y_s)
         T_g = THT.dot(theta, grid)
@@ -81,7 +91,7 @@ class SpatialTransformer(Module):
     
         # dimshuffle input to  (bs, height, width, channels)
         input_dim = input.dimshuffle(0, 2, 3, 1)
-        input_transformed = SpatialTransformer.interpolate(
+        input_transformed = TranformerLayer.interpolate(
             input_dim, x_s_flat, y_s_flat,
             out_height, out_width)
     

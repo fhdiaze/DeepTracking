@@ -20,7 +20,7 @@ class Rnn(Module):
         for layer in layers:
             output = layer(output)
         
-        self.model = Model(input=input, output=output)
+        self.model = Model(inputs=input, outputs=output)
         
     
     def setTrainable(self, trainable):
