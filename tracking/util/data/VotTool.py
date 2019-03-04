@@ -9,35 +9,30 @@ import os
 import random
 import numpy as NP
 import dill
-import scipy.misc as SCPM
 import matplotlib.pyplot as PLT
-import tracking.util.data.Preprocess as Preprocess
+import tracking.data.Preprocess as Preprocess
 from PIL import Image
-from tracking.sequence.Sequence import Sequence
+from tracking.data.Sequence import Sequence
 
 
 def loadFrame(path):
     frame = Image.open(path)
+    frame.load()
     
     if frame.mode != "RGB":
             frame = frame.convert("RGB")
-            
-    frame = NP.array(frame)
     
     return frame
     
     
-def loadFrames(framePaths, size):
-    frame = []
+def loadFrames(framePaths):
+    frames = []
     
     for i, framePath in enumerate(framePaths):
         tmpFrame = loadFrame(framePath)
-        originalSize = tmpFrame.shape[:2][::-1] # imageSize must be (width, height)
-        frame.append(SCPM.imresize(tmpFrame, size))
+        frames.append(tmpFrame)
     
-    frame = NP.array(frame, dtype=NP.float)
-    
-    return frame, originalSize
+    return frames
     
 
 def getFramePaths(path, extension):
@@ -61,16 +56,14 @@ def loadPosition(path):
     return position
     
 
-def loadSequence(path, extension, boxesFile, size):
+def loadSequence(path, extension, boxesFile):
     # Load frames
     framePaths = getFramePaths(path, extension)
-    frame, originalSize = loadFrames(framePaths, size)
+    frame = loadFrames(framePaths)
     
     # Load bounding boxes information
     boxesPath = os.path.join(path, boxesFile)
     position = loadPosition(boxesPath)
-    position = Preprocess.scalePosition(position, originalSize)
-    position = Preprocess.rescalePosition(position, size)
     
     return frame, position
     

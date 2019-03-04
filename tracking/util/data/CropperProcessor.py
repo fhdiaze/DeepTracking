@@ -6,38 +6,49 @@ Created on Wed Aug 17 12:14:51 2016
 """
 
 import numpy as NP
-from tracking.model.core.Processor import Processor
+from tracking.data.Processor import Processor
 
 class CropperProcessor(Processor):
     
-    def __init__(self, cropper, positionModel, processor, tRange):
+    def __init__(self, cropper, positionModel, tRange):
         self.cropper = cropper
         self.theta = None
         self.positionModel = positionModel
-        self.processor = processor
         self.tRange = tRange
         self.cRange = NP.array([[-1.0, 1.0], [-1.0, 1.0]])
         
         
-    def preprocess(self, frame, position):
-        frame, position = self.processor.preprocess(frame, position)
-        position = self.positionModel.scale(position, self.tRange, self.cRange)
-        cropPosition = NP.roll(position, 1, axis=1) # Shift the time
+    def preprocess(self, frame, position):        
+        bF = []
+        bP = []
+        bT = []
+        self.oRange = []
         
-        if cropPosition.shape[1] > 1:
-            cropPosition[:, 0, :] = cropPosition[:, 1, :] # First frame is ground truth
+        for f, p in zip(frame, position):        
+            frameSize = f[0].size[0]
+            self.oRange.append(NP.array([[0, frameSize], [0, frameSize]]))
+            cropPosition = NP.copy(p)
+            
+            if cropPosition.shape[1] > 1:
+                cropPosition[-1, :] = cropPosition[-2, :] # We want to predict last frame position
+            
+            f, p, t = self.cropper.crop(f, cropPosition, p)
+            bF.append(f)
+            bP.append(p)
+            bT.append(t)
+            
+        self.theta = NP.stack(bT)
         
-        frame, position, self.theta = self.cropper.crop(frame, cropPosition, position)
-        position = self.positionModel.scale(position, self.cRange, self.tRange)
-
-        return frame, position
+        return NP.stack(bF), NP.stack(bP)
 
     
     def postprocess(self, frame, position):
-        # Transforming the positions        
-        position = self.positionModel.scale(position, self.tRange, self.cRange)
-        position = self.positionModel.transform(self.theta, position)
-        position = self.positionModel.scale(position, self.cRange, self.tRange)
-        frame, position = self.processor.postprocess(frame, position)
+        p = NP.empty(position.shape)
+        
+        for i in range(position.shape[0]):
+            # Transforming the positions        
+            tempP = self.positionModel.scale(position[i, ...], self.tRange, self.cRange)
+            tempP = self.positionModel.transform(self.theta[i, ...], tempP)
+            p[i, ...] = self.positionModel.scale(tempP, self.cRange, self.oRange[i])
 
-        return frame, position
+        return frame, p

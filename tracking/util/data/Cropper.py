@@ -7,46 +7,49 @@ Created on Fri Aug 12 14:31:07 2016
 
 import numpy as NP
 import numpy.linalg as NLA
-from keras.layers import Input
-from tracking.model.core.Processor import Processor
-from tracking.model.keras.SpatialTransformer import SpatialTransformer
-from tracking.util.model.CentroidHWPM import CentroidHWPM
+from PIL import Image
+from tracking.data.Processor import Processor
+from tracking.model.core.CentroidHWPM import CentroidHWPM
 
 
 class Cropper(Processor):
     
-    def __init__(self, frameDims, positionModel, context, distorsion, minSide, downsampleFactor):
+    def __init__(self, positionModel, context, distorsion, minSide, tRange, frameSize):
         self.positionModel = positionModel
         self.context = context
         self.distorsion = distorsion
         self.minSide = minSide
+        self.tRange = tRange
+        self.frameSize = frameSize
         self.chwPM = CentroidHWPM()
-        self.transformer = self.createTransformer(frameDims, downsampleFactor)
+        self.cRange = NP.array([[-1.0, 1.0], [-1.0, 1.0]])
         
     
-    # position must be between [-1,1]
     # cropPosition.shape = (batchSize, seqLength, targetDim)
     # objPosition.shape = (batchSize, seqLength, targetDim)
-    # frame.shape = (batchSize, seqLength, channels, height, width)
-    def crop(self, frame, cropPosition, objPosition):
-        frameShape = frame.shape
-        (chans, height, width) = frameShape[-3:]
-        
-        # Generating the transformations
-        theta, thetaInv = self.generateTheta(cropPosition)
+    # frame = [[]]
+    def crop(self, frame, cropPosition, objPosition):        
+        frameSize = frame[0].size[0]
         
         # Generating the frames crops
-        frame = self.transformer.predict_on_batch([frame, theta])
+        frame = self.cropFrames(frame, cropPosition)
+        oRange = NP.array([[0, frameSize], [0, frameSize]])
         
         # Generating the positions
+        
+        # Generating the transformations
+        cropPosition = self.positionModel.scale(cropPosition, oRange, self.cRange)
+        theta, thetaInv = self.generateTheta(cropPosition)
+        objPosition = self.positionModel.scale(objPosition, oRange, self.cRange)
         objPosition = self.positionModel.transform(thetaInv, objPosition)
+        objPosition = self.positionModel.scale(objPosition, self.cRange, self.tRange)
         
         return frame, objPosition, theta
         
         
     def generateTheta(self, position):
-        batchSize, seqLength, targetDim = position.shape
-        samples = batchSize * seqLength
+        seqLength, targetDim = position.shape
+        samples = seqLength
         theta = NP.zeros((samples, 3, 3), dtype='float32')
         
         targetDim = self.chwPM.getTargetDim()
@@ -56,8 +59,8 @@ class Cropper(Processor):
         dy = NP.random.uniform(-self.distorsion, self.distorsion, size=(samples))
         cX = chw[:, 0] + dx
         cY = chw[:, 1] + dy
-        h = NP.maximum(chw[:, 2] * (1.0 + self.context), self.minSide)
-        w = NP.maximum(chw[:, 3] * (1.0 + self.context), self.minSide)
+        h = NP.maximum(chw[:, 2] * self.context, self.minSide)
+        w = NP.maximum(chw[:, 3] * self.context, self.minSide)
         
         # Calculating the parameters of the transformation
         tx = cX
@@ -75,10 +78,20 @@ class Cropper(Processor):
         return theta, NLA.inv(theta)
         
         
-    def createTransformer(self, frameDims, downsampleFactor):
-        frame = Input(shape=(None, ) + frameDims)
-        theta = Input(shape=(3, 3))
-        transformer = SpatialTransformer([frame, theta], downsampleFactor).getModel()
-        transformer.compile(optimizer="rmsprop", loss='mse')
+    def cropFrames(self, frame, box):
         
-        return transformer
+        length = len(frame)
+        _, _, channels = NP.asarray(frame[0]).shape
+        window = self.chwPM.fromTwoCorners(box)
+        window[:,  2:] *= self.context
+        window = self.chwPM.toTwoCorners(window)
+        
+        cFrame = NP.zeros((length, self.frameSize, self.frameSize, channels))
+        
+        for t in range(length):
+            f = frame[t]
+            f = f.crop(window[t, ...])
+            f = f.resize((self.frameSize, self.frameSize), Image.BICUBIC)
+            cFrame[t, ...] = NP.asarray(f)
+        
+        return cFrame

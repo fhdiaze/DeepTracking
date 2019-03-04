@@ -62,6 +62,7 @@ class PositionModel(object):
         return position
     
     
+    # position = [..., coordinates]
     # oRange = [[xMin, xMax], [yMin, yMax]]
     # tRange = [[xMin, xMax], [yMin, yMax]]
     def scale(self, position, oRange, tRange):
