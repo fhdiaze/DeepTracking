@@ -22,25 +22,25 @@ class Sequence(object):
 
     @type  frames: iterator(PIL.Image)
     @param frames: The frames iterator
+    @type  positionModel: model.core.PositionModel
+    @param positionModel: The model of object positions
     """
     def __init__(self, frames, positionModel):
         self.frames = frames
-        self.boxes = {}
         self.positionModel = positionModel
+        self.boxes = []
 
     
     """
     Add bounding boxes to the frames.
 
-    @type  position:  [[number]]
-    @param position:  A list of list. Each element must be a list containing the points of a polygon.
-    @type  outline: string
-    @param outline: The color for the boxes.
+    @type  position: [[number]]
+    @param position: Each element must be of the form [frame, id, position representation].
     """
-    def addBoxes(self, position, outline):
-        # add the new bounding boxes to the dictionary
-        self.boxes[outline] = position
-
+    def addBoxes(self, position):
+        # add the new positions
+        self.boxes = position
+        
     
     """
     Return the frames with bounding boxes drawn.
@@ -49,8 +49,8 @@ class Sequence(object):
     @return: An iterator over the frames.
     """
     def getFramesWithBoxes(self):
-        for index, frame in enumerate(self.frames, start=0):
-            frameBoxes = [(outline, boxes[index]) for outline, boxes in self.boxes.items()]
+        for index, frame in enumerate(self.frames, start=1):
+            frameBoxes = [box[1:] for box in self.boxes if box[0] == index]
             self.plotBoxes(frame, frameBoxes)
             frame = self.resizeImage(frame)
             yield frame
@@ -59,14 +59,15 @@ class Sequence(object):
     """
     Plot many bounding boxes in a frame.
 
-    @type    frame:           PIL.Image
-    @param   frame:           The frame
-    @type    outlineBoxPairs: [(string, [])]
-    @param   outlineBoxPairs: The list of color, points of a polygon
+    @type  frame:           PIL.Image
+    @param frame:           The frame
+    @type  position: [[number]]
+    @param position: Each element must be of the form [id, position representation].
     """ 
-    def plotBoxes(self, frame, outlineBoxPairs):
-        for outline, box in outlineBoxPairs:
-            self.positionModel.plot(frame, box, outline)
+    def plotBoxes(self, frame, position):
+        for p in position:
+            outline = "blue"
+            self.positionModel.plot(frame, p[1:], outline)
     
     
     """
